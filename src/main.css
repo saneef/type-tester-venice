@@ -1,0 +1,102 @@
+@custom-media --viewport-medium (width <= 50rem);
+
+@custom-selector :--heading h1, h2, h3, h4, h5, h6;
+
+:root {
+	--mainColor: #222;
+
+	font-size: 100%;
+}
+
+* {
+	margin: 0;
+}
+
+* + * {
+	margin-top: 1em;
+}
+
+body {
+	color: var(--mainColor);
+	font-family: system-ui;
+	overflow-wrap: break-word;
+}
+
+:--heading {
+	font-weight: 600;
+}
+
+strong {
+	font-weight: 600;
+}
+
+pre,
+code {
+	background-color: rgba(0,0,0,.05);
+	padding: 0 .125em;
+	border-radius: .125em;
+}
+
+pre {
+	padding: 1em;
+	font-size: 80%;
+
+	& code {
+		background-color: transparent;
+	}
+}
+
+
+.article--type-source-serif-pro {
+	font-family: 'Source Serif Pro', serif;
+	font-size: 125%;
+
+	& code {
+		font-family: 'Source Code Pro', monospace;
+	}
+}
+
+.article {
+	padding: 1em;
+}
+
+.article--type-source-sans-pro {
+	font-family: 'Source Sans Pro', serif;
+	font-size: 125%;
+
+	& code {
+		font-family: 'Source Code Pro', monospace;
+	}
+}
+
+.article {
+	padding: 1em;
+}
+
+.article--type-ibm-plex-serif {
+	font-family: 'IBM Plex Serif', serif;
+	font-size: 115%;
+
+	& code {
+		font-family: 'IBM Plex Mono', monospace;
+	}
+}
+
+
+.article--type-ibm-plex-sans-serif {
+	font-family: 'IBM Plex Sans', serif;
+	font-size: 115%;
+
+	& code {
+		font-family: 'IBM Plex Mono', monospace;
+	}
+}
+
+.style-selector {
+	padding: 0 1em;
+	text-align: center;
+
+	& button {
+		margin-top: 0;
+	}
+}
