@@ -13,15 +13,6 @@ module.exports = {
 				}
 			},
 			{
-				test: /\.html$/,
-				use: [
-					{
-						loader: 'html-loader',
-						options: {minimize: true}
-					}
-				]
-			},
-			{
 				test: /\.css$/,
 				use: [
 					MiniCssExtractPlugin.loader,
@@ -41,10 +32,6 @@ module.exports = {
 		]
 	},
 	plugins: [
-		new HtmlWebPackPlugin({
-			template: './src/index.html',
-			filename: './index.html'
-		}),
 		new MiniCssExtractPlugin({
 			filename: '[name].css',
 			chunkFilename: '[id].css'

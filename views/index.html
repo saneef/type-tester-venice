@@ -1,0 +1,43 @@
+---
+layout: layouts/default
+title: "a-static-starter-kit"
+---
+
+<h1>Sort order preserving serialization</h1>
+
+<p>FoundationDB is a distributed key-value store. From the database perspective, both keys and values are just bytes. Keys are sorted lexicographically and different chunks are assigned to different servers. Because of this locality property, the range read operation is efficient as most of the time the client would be able to fetch the data from a single server.</p>
+<p>As the keys are just bytes, the application must serialize the keys and more importantly if we need to use range operation, then the serialization should preserve the order of the keys. Fortunately, all the clients implement the tuple layer which has this property. This post attempts to explain how various data types are encoded in a way that preserves their natural sort order.</p>
+<p>I will represent bytes using their hex format for the rest of the blog post. Each data type is tagged with an identifier which uniquely identifies the type.</p>
+<h2>Null</h2>
+<p>Null is encoded with the tag <code>00</code></p>
+<h2>Byte String</h2>
+<p>Tag <code>01</code> is used for byte string. <code>00</code> is used as the terminator and <code>00</code> inside the byte string are escaped by replacing them with <code>00FF</code>. For example the byte string <code>ABCDEF</code> would be encoded as <code>01ABCDEF00</code>.</p>
+<p>It’s clear that order would be preserved for byte strings without <code>00</code> because the same constant values are prefixed and suffixed for all the byte strings. Let’s consider all the possible cases of byte strings with <code>00</code>.</p>
+<p>Because the terminator <code>00</code> has the lowest byte value and if the compared byte string has any value other than <code>00</code> in the same position then there is no need to consider the rest of the bytes. The last case shown is a bit tricky and there is a reason for choosing FF as the escape value and it will become more apparent when we consider Tuple types.</p>
+<h2>Integer</h2>
+<p>Integers upto 8 bytes are supported. Integers get encoded into variable size which depends on minium bytes required to represent the integer. Tags <code>0C</code> to <code>13</code> are used for negative numbers and tag <code>14</code> for zero and tags <code>15</code> to <code>1C</code> are used for positive number.</p>
+<p>For positive integers, big-endian byte order is used which naturally preserves the sort order. For negative integers, the sign is removed and bit complement of big-endian byte order is used <code>bit-complement(big-endian(abs(n)))</code>. The bit complement operation reverses the sort order. If two integers get encoded into different sized bytes, then the order would be preserved by tag values. The tag value increases as the integer value increases.</p>
+<h2>Float</h2>
+<p>Tags <code>20</code> (32 bits) and <code>21</code> (64 bits) are used for floating point numbers.</p>
+<pre><code>def transform(&lt;&lt;sign::big-integer-size(8), rest::binary&gt;&gt; = full) do
+  if (sign &amp;&amp;&amp; 0x80) != 0x00 do
+    :binary.bin_to_list(full)
+    |&gt; Enum.map(fn e -&gt; 0xFF ^^^ e end)
+    |&gt; IO.iodata_to_binary()
+  else
+    &lt;&lt;0x80 ^^^ sign&gt;&gt; &lt;&gt; rest
+  end
+end</code></pre>
+<p>The value is first encoded in IEEE 754 binary format. For positive numbers just the sign bit should be flipped and for negative numbers all the bits should be flipped. This should provide total order as per the IEEE specification.</p>
+<h2>Tuple</h2>
+<p>Because of the way other values are encoded, a tuple can be encoded just by concatenating the encoded values. Note that the sort order is preserved only between values of same types. Specially comparison between types like Float and Integer won’t work.</p>
+<pre><code>(AB, 42) 01AB00152A
+(AB00, 42) 01AB00FF00152A</code></pre>
+<p>This example illustrates why <code>FF</code> is chosen as <strong>the escape character</strong>. As long as we don’t use FF as the tag for any type, the byte string value <code>00</code> and the terminator value <code>00</code> would not conflict and break the sort order. Other types don’t introduce these kinds of behaviors because they are either of fixed size or in case of Integer, the tag will determine the order of the values if they are of different size.</p>
+<h2>Nested Tuple</h2>
+<p>Tuple type can’t be nested as there is no difference between <code>(1, (2, 3))</code> and <code>(1, 2, (3))</code>. Both values would get encoded as the same as the flattened tuple <code>(1, 2, 3)</code>. Nested tuple, as the name implies supports arbitrary nesting. <code>[</code> is used to represent nested tuple.</p>
+<p>Tag <code>05</code> and terminator <code>00</code> are used for nested tuple. Encoded values are concatenated and any Null values are escaped as <code>00FF</code>.</p>
+<pre><code>[1, [2, 3]] 05150105150215030000
+[1, 2, [3]] 05150115020515030000</code></pre>
+<p>There are other data types like unicode string, arbitrary precision number, <abbr title="Universally unique identifier">UUID</abbr>, boolean etc, but all of them follow similar principles discussed so far. As such, they are not considered here.</p>
+
